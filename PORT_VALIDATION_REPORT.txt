@@ -1,0 +1,35 @@
+Craft & Find Forge 1.20.1 - validation report
+================================================
+
+Target
+------
+Minecraft: 1.20.1
+Forge: 47.2.0+
+Java source/target: 17
+Mod ID: craftandfind
+Version: 0.1.7-forge-1.20.1
+
+Completed static checks
+-----------------------
+[PASS] 38 Java source files are present.
+[PASS] Java parser check with `javac --release 17 -proc:none` found no syntax errors.
+       Missing-symbol errors are expected because Minecraft/Forge libraries are not available in this container.
+[PASS] No NeoForge package imports or 1.21.1 payload/recipe APIs remain in executable Java sources.
+[PASS] All 12 JSON/resource metadata files parse successfully.
+[PASS] All 54 PNG files pass image integrity verification.
+[PASS] All 8 mixins listed in craftandfind.mixins.json have matching Java sources.
+[PASS] 1.20.1 data-pack directory names are used: advancements, recipes and loot_tables.
+[PASS] 61 shared visual/localization assets are byte-for-byte identical to the uploaded 1.21.1 project.
+[PASS] Forge metadata declares Java 17 and Forge 47.2.0 as the minimum.
+[PASS] Gradle bootstrap scripts pass shell syntax validation and target Gradle 8.1.1.
+[PASS] Source resources exclude editor/archive artifacts from the built JAR (*.bbmodel, gui.zip, *_old.png).
+
+Build/runtime status
+--------------------
+[NOT RUN] A complete ForgeGradle build and Minecraft launch could not be performed in this environment.
+The uploaded project does not contain gradle/wrapper/gradle-wrapper.jar, the environment has no installed
+Gradle, and outbound DNS is disabled. An attempted Gradle 8.1.1 download failed with:
+`Could not resolve host: services.gradle.org`.
+
+The included gradlew/gradlew.bat scripts bootstrap Gradle 8.1.1 on a normal internet-connected machine.
+Run `gradlew.bat clean build` and then follow TEST_CHECKLIST.md for runtime verification.
