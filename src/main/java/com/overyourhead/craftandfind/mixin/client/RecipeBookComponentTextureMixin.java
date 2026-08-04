@@ -38,14 +38,15 @@ public abstract class RecipeBookComponentTextureMixin {
             return;
         }
 
-        // Forge 1.20.1 supplies the panel origin one pixel lower/right than the
-        // position used by the 1.21.1 modular screen.
+        // Use the vanilla destination position and preserve its atlas UV.
+        // The recipe-panel artwork starts at (1, 1), so forcing (0, 0) drops
+        // its final right column and bottom row.
         graphics.blit(
                 WorkbenchTextures.RECIPE_PANEL,
-                x - 1,
-                y - 1,
-                0,
-                0,
+                x,
+                y,
+                u,
+                v,
                 WorkbenchLayout.PANEL_WIDTH,
                 WorkbenchLayout.PANEL_HEIGHT,
                 256,

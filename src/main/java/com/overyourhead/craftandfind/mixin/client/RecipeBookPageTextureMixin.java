@@ -10,54 +10,55 @@ import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
-/** Draws Craft & Find's old-atlas-compatible next/previous page controls. */
+/** Replaces the vanilla pager render with Craft & Find's 20x18 controls. */
 @Mixin(RecipeBookPage.class)
 public abstract class RecipeBookPageTextureMixin {
     @Shadow private StateSwitchingButton forwardButton;
     @Shadow private StateSwitchingButton backButton;
 
-    @Inject(method = "render", at = @At("TAIL"))
-    private void craftandfind$drawPageButtons(
+    @Redirect(
+            method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/components/StateSwitchingButton;render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V"
+            )
+    )
+    private void craftandfind$drawPageButton(
+            StateSwitchingButton button,
             GuiGraphics graphics,
-            int x,
-            int y,
             int mouseX,
             int mouseY,
-            float partialTick,
-            CallbackInfo ci
+            float partialTick
     ) {
         if (!(Minecraft.getInstance().screen instanceof StorageWorkbenchScreen)) {
+            button.render(graphics, mouseX, mouseY, partialTick);
             return;
         }
 
-        craftandfind$drawPageButton(
-                graphics,
-                backButton,
-                WorkbenchTextures.PAGE_PREVIOUS_TEXTURE,
-                WorkbenchTextures.PAGE_PREVIOUS_HOVERED_TEXTURE
-        );
-        craftandfind$drawPageButton(
-                graphics,
-                forwardButton,
-                WorkbenchTextures.PAGE_NEXT_TEXTURE,
-                WorkbenchTextures.PAGE_NEXT_HOVERED_TEXTURE
-        );
-    }
-
-    private static void craftandfind$drawPageButton(
-            GuiGraphics graphics,
-            StateSwitchingButton button,
-            ResourceLocation normal,
-            ResourceLocation hovered
-    ) {
         if (button == null || !button.visible) {
             return;
         }
 
-        ResourceLocation texture = button.isHoveredOrFocused() ? hovered : normal;
+        ResourceLocation normal;
+        ResourceLocation hovered;
+        if (button == backButton) {
+            normal = WorkbenchTextures.PAGE_PREVIOUS_TEXTURE;
+            hovered = WorkbenchTextures.PAGE_PREVIOUS_HOVERED_TEXTURE;
+        } else if (button == forwardButton) {
+            normal = WorkbenchTextures.PAGE_NEXT_TEXTURE;
+            hovered = WorkbenchTextures.PAGE_NEXT_HOVERED_TEXTURE;
+        } else {
+            button.render(graphics, mouseX, mouseY, partialTick);
+            return;
+        }
+
+        // AbstractWidget#render normally refreshes the cached hovered flag.
+        // This mixin intentionally replaces that render call, so calculate the
+        // hover state from the current mouse coordinates instead.
+        boolean isHovered = button.isMouseOver(mouseX, mouseY) || button.isFocused();
+        ResourceLocation texture = isHovered ? hovered : normal;
         graphics.blit(texture, button.getX(), button.getY(), 0, 0, 20, 18, 20, 18);
     }
 }

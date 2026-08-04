@@ -67,7 +67,7 @@ public final class WorkbenchLayout {
     public static final int RECIPE_BOOK_ICON_Y_FROM_SEARCH = -1;
     public static final int RECIPE_BOOK_BUTTONS_Y_OFFSET = 3;
     public static final int RECIPE_BOOK_PAGE_CONTROLS_Y_OFFSET = 2;
-    public static final int RECIPE_BOOK_PAGE_TEXT_Y_OFFSET = 3;
+    public static final int RECIPE_BOOK_PAGE_TEXT_Y_OFFSET = 4;
 
     public static final int CRAFTING_LABEL_X_OFFSET = 7;
     public static final int LABEL_COLOR = 0xFFE6D5AC;
