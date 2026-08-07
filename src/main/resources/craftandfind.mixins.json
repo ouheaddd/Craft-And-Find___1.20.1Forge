@@ -3,16 +3,15 @@
   "minVersion": "0.8",
   "package": "com.overyourhead.craftandfind.mixin",
   "compatibilityLevel": "JAVA_17",
+  "refmap": "craftandfind.refmap.json",
   "client": [
-    "client.CraftingMenuMixin",
     "client.RecipeBookComponentTextureMixin",
     "client.RecipeBookSearchStyleMixin",
     "client.RecipeButtonTextureMixin",
     "client.RecipeBookTabsLayoutMixin",
     "client.RecipeBookTabButtonTextureMixin",
     "client.RecipeBookPageTextureMixin",
-    "client.RecipeBookPageLayoutMixin",
-    "client.SlotPositionAccessor"
+    "client.RecipeBookPageLayoutMixin"
   ],
   "injectors": {
     "defaultRequire": 1

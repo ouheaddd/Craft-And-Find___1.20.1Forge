@@ -1,5 +1,6 @@
 package com.overyourhead.craftandfind.common.menu;
 
+import com.overyourhead.craftandfind.client.ClientStorageState;
 import com.overyourhead.craftandfind.common.network.CraftAndFindNetwork;
 import com.overyourhead.craftandfind.common.network.payload.GhostRecipePayload;
 import com.overyourhead.craftandfind.common.network.payload.StorageSnapshotPayload;
@@ -82,8 +83,31 @@ public final class StorageWorkbenchMenu extends CraftingMenu {
     @Override
     public void fillCraftSlotsStackedContents(StackedContents contents) {
         super.fillCraftSlotsStackedContents(contents);
+
         if (serverPlayer != null) {
             storage().account(contents);
+            return;
+        }
+
+        if (!ClientStorageState.isActive(containerId)) {
+            return;
+        }
+
+        for (StorageItemEntry entry : ClientStorageState.entries(containerId)) {
+            accountFullCount(contents, entry);
+        }
+    }
+
+    private static void accountFullCount(StackedContents contents, StorageItemEntry entry) {
+        int remaining = entry.count();
+        int stackLimit = Math.max(1, entry.stack().getMaxStackSize());
+
+        while (remaining > 0) {
+            int amount = Math.min(remaining, stackLimit);
+            ItemStack copy = entry.stack().copy();
+            copy.setCount(amount);
+            contents.accountStack(copy);
+            remaining -= amount;
         }
     }
 

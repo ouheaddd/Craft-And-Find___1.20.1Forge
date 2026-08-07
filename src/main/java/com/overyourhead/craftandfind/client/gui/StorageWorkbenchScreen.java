@@ -3,7 +3,6 @@ package com.overyourhead.craftandfind.client.gui;
 import com.overyourhead.craftandfind.client.ClientStorageState;
 import com.overyourhead.craftandfind.client.gui.workbench.WorkbenchLayout;
 import com.overyourhead.craftandfind.client.gui.workbench.WorkbenchTextures;
-import com.overyourhead.craftandfind.mixin.client.SlotPositionAccessor;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.components.events.GuiEventListener;
@@ -22,7 +21,6 @@ public final class StorageWorkbenchScreen extends CraftingScreen {
     private WorkbenchIconButton compassButton;
     private WorkbenchIconButton customRecipeButton;
     private ImageButton vanillaRecipeBookButton;
-    private boolean resultSlotShiftApplied;
     private boolean recipeTabActive = rememberedRecipeTabActive;
 
     public StorageWorkbenchScreen(CraftingMenu menu, Inventory inventory, Component title) {
@@ -34,8 +32,6 @@ public final class StorageWorkbenchScreen extends CraftingScreen {
     @Override
     protected void init() {
         super.init();
-        applyResultSlotShift();
-
         for (GuiEventListener child : children()) {
             if (child instanceof ImageButton imageButton
                     && imageButton.getWidth() == 20
@@ -325,16 +321,5 @@ public final class StorageWorkbenchScreen extends CraftingScreen {
         storagePanel.updatePosition(leftPos, width, height);
     }
 
-    private void applyResultSlotShift() {
-        if (resultSlotShiftApplied || menu.slots.isEmpty()) {
-            return;
-        }
-
-        Slot resultSlot = menu.getSlot(0);
-        SlotPositionAccessor position = (SlotPositionAccessor) resultSlot;
-        position.craftandfind$setX(resultSlot.x + WorkbenchLayout.RESULT_SLOT_CONTENT_X_SHIFT);
-        position.craftandfind$setY(resultSlot.y + WorkbenchLayout.RESULT_SLOT_CONTENT_Y_SHIFT);
-        resultSlotShiftApplied = true;
-    }
 
 }
