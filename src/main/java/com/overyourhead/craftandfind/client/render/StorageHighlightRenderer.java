@@ -636,12 +636,14 @@ public final class StorageHighlightRenderer {
             poseStack.mulPose(Axis.YP.rotationDegrees(StorageHighlightStyle.GUI3D_YAW_DEGREES));
             poseStack.mulPose(Axis.XP.rotationDegrees(StorageHighlightStyle.GUI3D_PITCH_DEGREES));
         }
+        // Keep both flat and 3D items on the camera-facing side of the marker.
+        // Flat generated items used to be pushed behind marker.png, whose center
+        // is intentionally semi-transparent/dark, so they always looked like
+        // the through-wall version even when the storage was fully visible.
         poseStack.translate(
                 0.0F,
                 StorageHighlightStyle.MARKER_ITEM_Y,
-                gui3d
-                        ? StorageHighlightStyle.MARKER_ITEM_Z
-                        : -StorageHighlightStyle.MARKER_ITEM_Z
+                StorageHighlightStyle.MARKER_ITEM_Z
         );
         float itemScale = StorageHighlightStyle.MARKER_ITEM_SCALE;
         poseStack.scale(itemScale, itemScale, itemScale);
