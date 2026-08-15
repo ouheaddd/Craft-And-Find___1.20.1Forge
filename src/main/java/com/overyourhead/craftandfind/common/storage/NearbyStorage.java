@@ -17,9 +17,12 @@ import net.minecraftforge.items.IItemHandler;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A cached view of loaded storage positions inside the workbench radius.
@@ -118,6 +121,25 @@ public final class NearbyStorage {
                 contents.accountStack(stack, stack.getCount());
             }
         }
+    }
+
+    /**
+     * Returns as much of a crafting-grid stack as possible to nearby storage.
+     * The returned stack is the remainder that no storage accepted.
+     */
+    public ItemStack insert(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack remaining = stack.copy();
+        for (ResolvedStorage resolved : currentStorages()) {
+            remaining = resolved.storage().insert(remaining, false);
+            if (remaining.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+        }
+        return remaining;
     }
 
     /**
@@ -278,28 +300,46 @@ public final class NearbyStorage {
      * without waiting for the next radius scan.
      */
     private List<SlotReference> currentSlots() {
-        if (level == null || storages.isEmpty()) {
-            return List.of();
-        }
-
         List<SlotReference> result = new ArrayList<>();
-        for (StorageReference reference : storages) {
-            StorageAccess storage = reference.currentStorage(level);
-            if (storage == null) {
-                continue;
-            }
-
+        for (ResolvedStorage resolved : currentStorages()) {
+            StorageAccess storage = resolved.storage();
             for (int slot = 0; slot < storage.getSlots(); slot++) {
                 if (!storage.getStack(slot).isEmpty()) {
                     result.add(new SlotReference(
-                            reference.pos(),
+                            resolved.pos(),
                             storage,
                             slot,
-                            reference.distanceSquared()
+                            resolved.distanceSquared()
                     ));
                 }
             }
         }
+        return result;
+    }
+
+    /**
+     * Resolves cached storage positions and removes duplicate logical inventories.
+     * Some multi-block/network storages expose the exact same handler from several
+     * block positions; counting every position would duplicate their contents.
+     */
+    private List<ResolvedStorage> currentStorages() {
+        if (level == null || storages.isEmpty()) {
+            return List.of();
+        }
+
+        Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        List<ResolvedStorage> result = new ArrayList<>();
+        for (StorageReference reference : storages) {
+            StorageAccess storage = reference.currentStorage(level);
+            if (storage == null || !seen.add(storage.identity())) {
+                continue;
+            }
+            result.add(new ResolvedStorage(reference.pos(), storage, reference.distanceSquared()));
+        }
+
+        result.sort(Comparator
+                .comparingInt(ResolvedStorage::distanceSquared)
+                .thenComparingLong(value -> value.pos().asLong()));
         return result;
     }
 
@@ -318,20 +358,20 @@ public final class NearbyStorage {
             return null;
         }
 
-        // Prefer the unsided Forge item handler when present. Modded storages
-        // can expose their full logical inventory and extraction rules here.
+        // Prefer the physical Container view. In Forge 1.20.1 a vanilla double
+        // chest capability represents the full 54-slot chest from *both* block
+        // positions, so capability-first scanning counts the same inventory twice.
+        if (blockEntity instanceof Container container) {
+            return new ContainerStorageAccess(container);
+        }
+
+        // Non-Container modded storages still use the generic Forge capability.
         IItemHandler itemHandler = blockEntity
                 .getCapability(ForgeCapabilities.ITEM_HANDLER, null)
                 .resolve()
                 .orElse(null);
         if (itemHandler != null) {
             return new ItemHandlerStorageAccess(itemHandler);
-        }
-
-        // Preserve Craft & Find's original support for vanilla / vanilla-style
-        // containers when a capability is not exposed.
-        if (blockEntity instanceof Container container) {
-            return new ContainerStorageAccess(container);
         }
 
         // Some mods expose automation access only from specific sides. Pick the
@@ -373,14 +413,23 @@ public final class NearbyStorage {
     }
 
     private interface StorageAccess {
+        Object identity();
+
         int getSlots();
 
         ItemStack getStack(int slot);
 
         ItemStack extract(int slot, int amount, boolean simulate);
+
+        ItemStack insert(ItemStack stack, boolean simulate);
     }
 
     private record ContainerStorageAccess(Container container) implements StorageAccess {
+        @Override
+        public Object identity() {
+            return container;
+        }
+
         @Override
         public int getSlots() {
             return container.getContainerSize();
@@ -412,9 +461,59 @@ public final class NearbyStorage {
             }
             return extracted;
         }
+
+        @Override
+        public ItemStack insert(ItemStack stack, boolean simulate) {
+            if (stack.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+
+            ItemStack remaining = stack.copy();
+            boolean changed = false;
+            for (int pass = 0; pass < 2 && !remaining.isEmpty(); pass++) {
+                for (int slot = 0; slot < container.getContainerSize() && !remaining.isEmpty(); slot++) {
+                    ItemStack existing = container.getItem(slot);
+                    boolean matching = !existing.isEmpty()
+                            && ItemStack.isSameItemSameTags(existing, remaining);
+                    if ((pass == 0 && !matching) || (pass == 1 && !existing.isEmpty())) {
+                        continue;
+                    }
+                    if (!container.canPlaceItem(slot, remaining)) {
+                        continue;
+                    }
+
+                    int limit = Math.min(container.getMaxStackSize(), remaining.getMaxStackSize());
+                    int room = existing.isEmpty() ? limit : limit - existing.getCount();
+                    if (room <= 0) {
+                        continue;
+                    }
+
+                    int moved = Math.min(room, remaining.getCount());
+                    if (!simulate) {
+                        if (existing.isEmpty()) {
+                            container.setItem(slot, copyWithCount(remaining, moved));
+                        } else {
+                            existing.grow(moved);
+                        }
+                        changed = true;
+                    }
+                    remaining.shrink(moved);
+                }
+            }
+
+            if (changed) {
+                container.setChanged();
+            }
+            return remaining;
+        }
     }
 
     private record ItemHandlerStorageAccess(IItemHandler itemHandler) implements StorageAccess {
+        @Override
+        public Object identity() {
+            return itemHandler;
+        }
+
         @Override
         public int getSlots() {
             return itemHandler.getSlots();
@@ -428,6 +527,15 @@ public final class NearbyStorage {
         @Override
         public ItemStack extract(int slot, int amount, boolean simulate) {
             return itemHandler.extractItem(slot, amount, simulate);
+        }
+
+        @Override
+        public ItemStack insert(ItemStack stack, boolean simulate) {
+            ItemStack remaining = stack.copy();
+            for (int slot = 0; slot < itemHandler.getSlots() && !remaining.isEmpty(); slot++) {
+                remaining = itemHandler.insertItem(slot, remaining, simulate);
+            }
+            return remaining;
         }
     }
 
@@ -461,6 +569,9 @@ public final class NearbyStorage {
         StorageAccess currentStorage(Level level) {
             return resolveStorage(level, pos);
         }
+    }
+
+    private record ResolvedStorage(BlockPos pos, StorageAccess storage, int distanceSquared) {
     }
 
     private record SlotReference(BlockPos pos, StorageAccess storage, int slot, int distanceSquared) {

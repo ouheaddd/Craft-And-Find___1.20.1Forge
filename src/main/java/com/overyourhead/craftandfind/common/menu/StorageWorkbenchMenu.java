@@ -17,6 +17,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.StackedContents;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.CraftingMenu;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Recipe;
@@ -25,6 +26,10 @@ import net.minecraft.world.level.Level;
 import java.util.List;
 
 public final class StorageWorkbenchMenu extends CraftingMenu {
+    private static final int FIRST_INPUT_SLOT = 1;
+    private static final int INPUT_SLOT_COUNT = 9;
+    private static final int PLAYER_INVENTORY_SLOT_COUNT = 36;
+
     private final ContainerLevelAccess workbenchAccess;
     private final BlockPos workbenchPos;
     private final Level level;
@@ -116,12 +121,24 @@ public final class StorageWorkbenchMenu extends CraftingMenu {
         if (recipe instanceof CraftingRecipe craftingRecipe) {
             NearbyStorage storage = refreshStorage();
 
+            // Recipe-book selection replaces the previous layout, while simply
+            // closing/reopening the workbench still preserves it. Return the old
+            // grid to nearby storage first and use the player inventory as fallback.
+            if (!returnGridForRecipeSelection(player, storage)) {
+                super.broadcastChanges();
+                sendSnapshot();
+                return;
+            }
+
             if (!canCraft(player, craftingRecipe, storage)) {
+                // Flush real slot/storage changes first. The ghost packet must be
+                // last because a storage refresh clears the client's old ghost.
+                super.broadcastChanges();
+                sendSnapshot();
                 CraftAndFindNetwork.sendToPlayer(
                         player,
                         new GhostRecipePayload(containerId, craftingRecipe.getId())
                 );
-                sendSnapshot();
                 return;
             }
 
@@ -132,6 +149,81 @@ public final class StorageWorkbenchMenu extends CraftingMenu {
         }
 
         super.handlePlacement(placeAll, recipe, player);
+    }
+
+    private boolean returnGridForRecipeSelection(ServerPlayer player, NearbyStorage storage) {
+        Inventory inventory = player.getInventory();
+
+        for (int index = 0; index < INPUT_SLOT_COUNT; index++) {
+            Slot slot = getSlot(FIRST_INPUT_SLOT + index);
+            ItemStack original = slot.getItem();
+            if (original.isEmpty()) {
+                continue;
+            }
+
+            ItemStack remaining = storage.insert(original);
+            remaining = insertIntoPlayerInventory(inventory, remaining);
+
+            slot.set(remaining);
+            if (!remaining.isEmpty()) {
+                // Nothing is destroyed if both storage and player inventory are
+                // full: the unmovable remainder stays in the persistent grid and
+                // the recipe switch is cancelled instead of drawing over it.
+                inventory.setChanged();
+                return false;
+            }
+        }
+
+        inventory.setChanged();
+        return true;
+    }
+
+    private static ItemStack insertIntoPlayerInventory(Inventory inventory, ItemStack stack) {
+        if (stack.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack remaining = stack.copy();
+        boolean changed = false;
+        for (int pass = 0; pass < 2 && !remaining.isEmpty(); pass++) {
+            for (int slot = 0; slot < PLAYER_INVENTORY_SLOT_COUNT && !remaining.isEmpty(); slot++) {
+                ItemStack existing = inventory.getItem(slot);
+                boolean matching = !existing.isEmpty()
+                        && ItemStack.isSameItemSameTags(existing, remaining);
+                if ((pass == 0 && !matching) || (pass == 1 && !existing.isEmpty())) {
+                    continue;
+                }
+
+                int limit = Math.min(inventory.getMaxStackSize(), remaining.getMaxStackSize());
+                int room = existing.isEmpty() ? limit : limit - existing.getCount();
+                if (room <= 0) {
+                    continue;
+                }
+
+                int moved = Math.min(room, remaining.getCount());
+                if (existing.isEmpty()) {
+                    inventory.setItem(slot, copyWithCount(remaining, moved));
+                } else {
+                    existing.grow(moved);
+                }
+                remaining.shrink(moved);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            inventory.setChanged();
+        }
+        return remaining;
+    }
+
+    private static ItemStack copyWithCount(ItemStack stack, int count) {
+        if (stack.isEmpty() || count <= 0) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack copy = stack.copy();
+        copy.setCount(count);
+        return copy;
     }
 
     private boolean canCraft(
