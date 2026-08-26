@@ -11,11 +11,14 @@ public final class StorageWorkbenchEmiStackProvider implements EmiStackProvider<
     public EmiStackInteraction getStackAt(StorageWorkbenchScreen screen, int x, int y) {
         ItemStack stack = screen.storageItemUnderMouse(x, y);
         if (stack.isEmpty()) {
+            stack = screen.recipeItemUnderMouse(x, y);
+        }
+        if (stack.isEmpty()) {
             return EmiStackInteraction.EMPTY;
         }
 
-        // Mark virtual storage entries as clickable EMI ingredients so the normal
-        // recipe/uses actions work directly from Craft & Find's left panel.
-        return new EmiStackInteraction(EmiStack.of(stack));
+        // Keyboard lookup target only. EMI still sees the item for R/U, while
+        // normal left clicks on recipe tiles remain owned by Craft & Find.
+        return new EmiStackInteraction(EmiStack.of(stack), null, false);
     }
 }

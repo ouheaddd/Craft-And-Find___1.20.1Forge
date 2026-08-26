@@ -1,6 +1,8 @@
 package com.overyourhead.craftandfind.compat.jei;
 
 import com.overyourhead.craftandfind.client.ClientStorageState;
+import com.overyourhead.craftandfind.common.network.CraftAndFindNetwork;
+import com.overyourhead.craftandfind.common.network.payload.RecipeTransferPayload;
 import com.overyourhead.craftandfind.common.storage.StorageItemEntry;
 import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
@@ -100,15 +102,14 @@ public final class StorageWorkbenchJeiTransferHandler
             return null;
         }
 
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.gameMode == null) {
-            return helper.createInternalError();
-        }
-
-        // Use the same vanilla recipe-book packet the workbench already handles.
-        // The server-side menu is StorageWorkbenchMenu, so its handlePlacement
-        // implementation pulls missing ingredients from NearbyStorage.
-        minecraft.gameMode.handlePlaceRecipe(container.containerId, recipe, maxTransfer);
+        // Use Craft & Find's own packet instead of the vanilla recipe-book
+        // placement packet. This stays functional even when NERB intentionally
+        // keeps the player's vanilla recipe book empty.
+        CraftAndFindNetwork.sendToServer(new RecipeTransferPayload(
+                container.containerId,
+                recipe.getId(),
+                maxTransfer
+        ));
         return null;
     }
 

@@ -5,14 +5,8 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "craftandfind.refmap.json",
   "client": [
-    "client.RecipeBookComponentAccessor",
-    "client.RecipeBookComponentTextureMixin",
-    "client.RecipeBookSearchStyleMixin",
-    "client.RecipeButtonTextureMixin",
-    "client.RecipeBookTabsLayoutMixin",
-    "client.RecipeBookTabButtonTextureMixin",
-    "client.RecipeBookPageTextureMixin",
-    "client.RecipeBookPageLayoutMixin"
+    "client.GhostIngredientAccessor",
+    "client.RecipeBookComponentAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

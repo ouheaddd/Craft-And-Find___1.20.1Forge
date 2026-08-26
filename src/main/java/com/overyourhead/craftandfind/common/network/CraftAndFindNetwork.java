@@ -6,10 +6,12 @@ import com.overyourhead.craftandfind.common.menu.StorageWorkbenchMenu;
 import com.overyourhead.craftandfind.common.network.payload.GhostRecipePayload;
 import com.overyourhead.craftandfind.common.network.payload.HighlightPositionsPayload;
 import com.overyourhead.craftandfind.common.network.payload.HighlightRequestPayload;
+import com.overyourhead.craftandfind.common.network.payload.RecipeTransferPayload;
 import com.overyourhead.craftandfind.common.network.payload.StorageSnapshotPayload;
 import com.overyourhead.craftandfind.config.CraftAndFindServerConfig;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkDirection;
@@ -38,6 +40,12 @@ public final class CraftAndFindNetwork {
                 .encoder(HighlightRequestPayload::encode)
                 .decoder(HighlightRequestPayload::decode)
                 .consumerMainThread(CraftAndFindNetwork::handleHighlightRequest)
+                .add();
+
+        CHANNEL.messageBuilder(RecipeTransferPayload.class, nextMessageId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(RecipeTransferPayload::encode)
+                .decoder(RecipeTransferPayload::decode)
+                .consumerMainThread(CraftAndFindNetwork::handleRecipeTransfer)
                 .add();
 
         CHANNEL.messageBuilder(StorageSnapshotPayload.class, nextMessageId++, NetworkDirection.PLAY_TO_CLIENT)
@@ -84,6 +92,30 @@ public final class CraftAndFindNetwork {
             var allTargets = menu.refreshStorage().highlightTargets(payload.stack(), player.position());
             int targetLimit = Math.min(allTargets.size(), CraftAndFindServerConfig.maxHighlightedContainers());
             sendToPlayer(player, new HighlightPositionsPayload(payload.stack(), allTargets.subList(0, targetLimit)));
+        } finally {
+            context.setPacketHandled(true);
+        }
+    }
+
+    private static void handleRecipeTransfer(
+            RecipeTransferPayload payload,
+            Supplier<NetworkEvent.Context> contextSupplier
+    ) {
+        NetworkEvent.Context context = contextSupplier.get();
+        try {
+            ServerPlayer player = context.getSender();
+            if (player == null || !(player.containerMenu instanceof StorageWorkbenchMenu menu)) {
+                return;
+            }
+            if (menu.containerId != payload.containerId()) {
+                return;
+            }
+
+            player.level().getRecipeManager().byKey(payload.recipeId()).ifPresent(recipe -> {
+                if (recipe instanceof CraftingRecipe craftingRecipe) {
+                    menu.handlePlacement(payload.placeAll(), craftingRecipe, player);
+                }
+            });
         } finally {
             context.setPacketHandled(true);
         }

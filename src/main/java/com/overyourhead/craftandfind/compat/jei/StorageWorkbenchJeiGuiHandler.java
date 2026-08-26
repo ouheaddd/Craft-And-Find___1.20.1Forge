@@ -20,10 +20,13 @@ public final class StorageWorkbenchJeiGuiHandler implements IGuiContainerHandler
 
     @Override
     public List<Rect2i> getGuiExtraAreas(StorageWorkbenchScreen screen) {
-        if (!screen.isStoragePanelOpen()) {
-            return List.of();
+        if (screen.isStoragePanelOpen()) {
+            return List.of(screen.storagePanelArea());
         }
-        return List.of(screen.storagePanelArea());
+        if (screen.isRecipePanelOpen()) {
+            return List.of(screen.recipePanelArea());
+        }
+        return List.of();
     }
 
     @Override
@@ -32,6 +35,10 @@ public final class StorageWorkbenchJeiGuiHandler implements IGuiContainerHandler
             double mouseX,
             double mouseY
     ) {
+        // Storage entries keep their normal JEI ingredient behavior. Recipe-result
+        // tiles deliberately do not use this mouse hook, otherwise JEI's default
+        // left-click binding can steal Craft & Find's direct craft action. R/U on
+        // recipe tiles is handled through RecipeViewerHooks instead.
         ItemStack stack = screen.storageItemUnderMouse(mouseX, mouseY);
         if (stack.isEmpty()) {
             return Optional.empty();

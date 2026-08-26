@@ -1,6 +1,8 @@
 package com.overyourhead.craftandfind.compat.emi;
 
 import com.overyourhead.craftandfind.client.ClientStorageState;
+import com.overyourhead.craftandfind.common.network.CraftAndFindNetwork;
+import com.overyourhead.craftandfind.common.network.payload.RecipeTransferPayload;
 import com.overyourhead.craftandfind.common.storage.StorageItemEntry;
 import dev.emi.emi.api.recipe.EmiPlayerInventory;
 import dev.emi.emi.api.recipe.EmiRecipe;
@@ -93,7 +95,7 @@ public final class StorageWorkbenchEmiRecipeHandler implements StandardRecipeHan
         }
 
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.level == null || minecraft.gameMode == null || recipe.getId() == null) {
+        if (minecraft.level == null || recipe.getId() == null) {
             return false;
         }
 
@@ -101,21 +103,18 @@ public final class StorageWorkbenchEmiRecipeHandler implements StandardRecipeHan
                 .byKey(recipe.getId())
                 .orElse(null);
 
-        if (!(vanillaRecipe instanceof CraftingRecipe craftingRecipe)) {
-            // Synthetic EMI-only representations cannot be mapped safely to the
-            // server recipe-book packet. Fall back when the real slots can handle it.
+        if (!(vanillaRecipe instanceof CraftingRecipe)) {
+            // Synthetic EMI-only representations cannot be mapped safely to a
+            // server recipe id. Fall back when the real slots can handle it.
             return StandardRecipeHandler.super.craft(recipe, context);
         }
 
-        // Return to the actual handled screen before sending the vanilla recipe-book
-        // placement packet. StorageWorkbenchMenu handles that packet server-side and
-        // pulls ingredients from NearbyStorage using the same code as its recipe book.
         minecraft.setScreen(context.getScreen());
-        minecraft.gameMode.handlePlaceRecipe(
+        CraftAndFindNetwork.sendToServer(new RecipeTransferPayload(
                 menu.containerId,
-                craftingRecipe,
+                recipe.getId(),
                 context.getAmount() > 1
-        );
+        ));
         return true;
     }
 }
