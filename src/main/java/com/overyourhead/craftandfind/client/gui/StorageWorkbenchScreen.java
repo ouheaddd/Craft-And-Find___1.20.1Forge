@@ -3,12 +3,15 @@ package com.overyourhead.craftandfind.client.gui;
 import com.overyourhead.craftandfind.client.ClientStorageState;
 import com.overyourhead.craftandfind.client.gui.workbench.WorkbenchLayout;
 import com.overyourhead.craftandfind.client.gui.workbench.WorkbenchTextures;
+import com.overyourhead.craftandfind.mixin.client.RecipeBookComponentAccessor;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.Slot;
@@ -218,9 +221,44 @@ public final class StorageWorkbenchScreen extends CraftingScreen {
     }
 
     @Override
-    public void removed() {
+    public void onClose() {
+        // A real workbench close should drop the client snapshot immediately.
+        // JEI/EMI recipe screens temporarily replace this screen without closing
+        // the active crafting container, so that case is handled in removed().
         ClientStorageState.clear(menu.containerId);
+        super.onClose();
+    }
+
+    @Override
+    public void removed() {
+        // Opening JEI/EMI Recipes/Uses calls removed() because another screen is
+        // displayed, but the Storage Workbench menu itself is still active. Keep
+        // the nearby-storage snapshot alive so the left panel is populated again
+        // when the player returns. Clear only after the actual menu has changed.
+        if (minecraft == null
+                || minecraft.player == null
+                || minecraft.player.containerMenu.containerId != menu.containerId) {
+            ClientStorageState.clear(menu.containerId);
+        }
         super.removed();
+    }
+
+    public boolean isStoragePanelOpen() {
+        return storagePanel != null && storagePanel.isOpen();
+    }
+
+    public Rect2i storagePanelArea() {
+        if (storagePanel == null) {
+            return new Rect2i(0, 0, 0, 0);
+        }
+        return new Rect2i(storagePanel.left(), storagePanel.top(), StoragePanel.WIDTH, StoragePanel.HEIGHT);
+    }
+
+    public ItemStack storageItemUnderMouse(double mouseX, double mouseY) {
+        if (storagePanel == null) {
+            return ItemStack.EMPTY;
+        }
+        return storagePanel.itemUnderMouse(mouseX, mouseY);
     }
 
     public void onStorageUpdated() {
@@ -278,12 +316,12 @@ public final class StorageWorkbenchScreen extends CraftingScreen {
         if (recipeTabActive) {
             storagePanel.setOpen(false);
             if (!getRecipeBookComponent().isVisible()) {
-                getRecipeBookComponent().toggleVisibility();
+                setRecipeBookVisible(true);
             }
             resetMainPosition();
         } else {
             if (getRecipeBookComponent().isVisible()) {
-                getRecipeBookComponent().toggleVisibility();
+                setRecipeBookVisible(false);
             }
             storagePanel.setOpen(true);
             leftPos = width >= 379
@@ -292,6 +330,15 @@ public final class StorageWorkbenchScreen extends CraftingScreen {
         }
 
         updateCustomPositions();
+    }
+
+    private void setRecipeBookVisible(boolean visible) {
+        // EMI's default recipe-book action intercepts toggleVisibility() and
+        // turns the vanilla button into an EMI sidebar toggle. Craft & Find's
+        // own recipe tab must always control the actual vanilla recipe book,
+        // so invoke its protected visibility setter directly.
+        ((RecipeBookComponentAccessor) (Object) getRecipeBookComponent())
+                .craftandfind$setVisible(visible);
     }
 
     private void resetMainPosition() {

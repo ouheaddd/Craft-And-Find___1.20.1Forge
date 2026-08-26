@@ -1,0 +1,121 @@
+package com.overyourhead.craftandfind.compat.emi;
+
+import com.overyourhead.craftandfind.client.ClientStorageState;
+import com.overyourhead.craftandfind.common.storage.StorageItemEntry;
+import dev.emi.emi.api.recipe.EmiPlayerInventory;
+import dev.emi.emi.api.recipe.EmiRecipe;
+import dev.emi.emi.api.recipe.VanillaEmiRecipeCategories;
+import dev.emi.emi.api.recipe.handler.EmiCraftContext;
+import dev.emi.emi.api.recipe.handler.StandardRecipeHandler;
+import dev.emi.emi.api.stack.EmiStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.world.inventory.CraftingMenu;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.Recipe;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public final class StorageWorkbenchEmiRecipeHandler implements StandardRecipeHandler<CraftingMenu> {
+    private static final int RESULT_SLOT = 0;
+    private static final int FIRST_CRAFTING_SLOT = 1;
+    private static final int CRAFTING_SLOT_COUNT = 9;
+
+    @Override
+    public List<Slot> getInputSources(CraftingMenu handler) {
+        // CraftingMenu layout: output 0, crafting grid 1..9, player inventory after it.
+        return new ArrayList<>(handler.slots.subList(FIRST_CRAFTING_SLOT, handler.slots.size()));
+    }
+
+    @Override
+    public List<Slot> getCraftingSlots(CraftingMenu handler) {
+        return new ArrayList<>(handler.slots.subList(
+                FIRST_CRAFTING_SLOT,
+                FIRST_CRAFTING_SLOT + CRAFTING_SLOT_COUNT
+        ));
+    }
+
+    @Override
+    public Slot getOutputSlot(CraftingMenu handler) {
+        return handler.getSlot(RESULT_SLOT);
+    }
+
+    @Override
+    public boolean supportsRecipe(EmiRecipe recipe) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) {
+            return false;
+        }
+
+        CraftingMenu menu = minecraft.player.containerMenu instanceof CraftingMenu craftingMenu
+                ? craftingMenu
+                : null;
+
+        return menu != null
+                && ClientStorageState.isActive(menu.containerId)
+                && recipe.getCategory() == VanillaEmiRecipeCategories.CRAFTING;
+    }
+
+    @Override
+    public EmiPlayerInventory getInventory(AbstractContainerScreen<CraftingMenu> screen) {
+        CraftingMenu menu = screen.getMenu();
+        if (!ClientStorageState.isActive(menu.containerId)) {
+            return StandardRecipeHandler.super.getInventory(screen);
+        }
+
+        List<EmiStack> available = new ArrayList<>();
+
+        // Real player inventory + anything already sitting in the persistent grid.
+        for (Slot slot : getInputSources(menu)) {
+            if (!slot.getItem().isEmpty()) {
+                available.add(EmiStack.of(slot.getItem()));
+            }
+        }
+
+        // Virtual nearby storage. The snapshot is already filtered/aggregated by
+        // Craft & Find, so exclusions such as the Sculk Sentinel Chest carry over.
+        for (StorageItemEntry entry : ClientStorageState.entries(menu.containerId)) {
+            if (!entry.stack().isEmpty() && entry.count() > 0) {
+                available.add(EmiStack.of(entry.stack(), entry.count()));
+            }
+        }
+
+        return new EmiPlayerInventory(available);
+    }
+
+    @Override
+    public boolean craft(EmiRecipe recipe, EmiCraftContext<CraftingMenu> context) {
+        CraftingMenu menu = context.getScreenHandler();
+        if (!ClientStorageState.isActive(menu.containerId)) {
+            return StandardRecipeHandler.super.craft(recipe, context);
+        }
+
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null || minecraft.gameMode == null || recipe.getId() == null) {
+            return false;
+        }
+
+        Recipe<?> vanillaRecipe = minecraft.level.getRecipeManager()
+                .byKey(recipe.getId())
+                .orElse(null);
+
+        if (!(vanillaRecipe instanceof CraftingRecipe craftingRecipe)) {
+            // Synthetic EMI-only representations cannot be mapped safely to the
+            // server recipe-book packet. Fall back when the real slots can handle it.
+            return StandardRecipeHandler.super.craft(recipe, context);
+        }
+
+        // Return to the actual handled screen before sending the vanilla recipe-book
+        // placement packet. StorageWorkbenchMenu handles that packet server-side and
+        // pulls ingredients from NearbyStorage using the same code as its recipe book.
+        minecraft.setScreen(context.getScreen());
+        minecraft.gameMode.handlePlaceRecipe(
+                menu.containerId,
+                craftingRecipe,
+                context.getAmount() > 1
+        );
+        return true;
+    }
+}

@@ -13,6 +13,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -72,6 +73,23 @@ public final class StoragePanel {
 
     public boolean isOpen() {
         return open;
+    }
+
+    public int left() {
+        return x;
+    }
+
+    public int top() {
+        return y;
+    }
+
+    public ItemStack itemUnderMouse(double mouseX, double mouseY) {
+        if (!open) {
+            return ItemStack.EMPTY;
+        }
+
+        StorageItemEntry entry = entryAt(mouseX, mouseY);
+        return entry == null ? ItemStack.EMPTY : entry.stack();
     }
 
     public void toggle() {
