@@ -328,7 +328,17 @@ public final class WorkbenchRecipePanel {
     }
 
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        return open && searchBox.isFocused() && searchBox.keyPressed(keyCode, scanCode, modifiers);
+        if (!open || !searchBox.isFocused()) {
+            return false;
+        }
+
+        // Always consume key presses while the recipe search field is focused.
+        // EditBox returns false for normal letter keys because the actual text is
+        // inserted later through charTyped(). If we propagated that false result
+        // to the parent screen, keys such as E would reach Minecraft's inventory
+        // keybind and close the entire workbench while the player is typing.
+        searchBox.keyPressed(keyCode, scanCode, modifiers);
+        return true;
     }
 
     public boolean charTyped(char codePoint, int modifiers) {
