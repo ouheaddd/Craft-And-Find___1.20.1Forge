@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "craftandfind.refmap.json",
   "client": [
+    "client.PoseStackAccessor",
     "client.GhostIngredientAccessor",
     "client.RecipeBookComponentAccessor"
   ],

@@ -6,6 +6,7 @@ import com.overyourhead.craftandfind.config.CraftAndFindClientConfig;
 import com.overyourhead.craftandfind.config.CraftAndFindServerConfig;
 import com.overyourhead.craftandfind.core.ModBlocks;
 import com.overyourhead.craftandfind.core.ModItems;
+import com.overyourhead.craftandfind.core.ModCreativeTabs;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.level.block.Blocks;
@@ -26,6 +27,7 @@ public final class CraftAndFindMod {
 
         ModBlocks.BLOCKS.register(modBus);
         ModItems.ITEMS.register(modBus);
+        ModCreativeTabs.TABS.register(modBus);
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, CraftAndFindClientConfig.SPEC);
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, CraftAndFindServerConfig.SPEC);

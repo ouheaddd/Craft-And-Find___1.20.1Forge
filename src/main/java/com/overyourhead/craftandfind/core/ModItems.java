@@ -1,6 +1,7 @@
 package com.overyourhead.craftandfind.core;
 
 import com.overyourhead.craftandfind.CraftAndFindMod;
+import com.overyourhead.craftandfind.common.item.StorageWorkbenchItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.DeferredRegister;
@@ -13,7 +14,7 @@ public final class ModItems {
 
     public static final RegistryObject<BlockItem> STORAGE_WORKBENCH_ITEM = ITEMS.register(
             "storage_workbench",
-            () -> new BlockItem(ModBlocks.STORAGE_WORKBENCH.get(), new Item.Properties())
+            () -> new StorageWorkbenchItem(ModBlocks.STORAGE_WORKBENCH.get(), new Item.Properties())
     );
 
     private ModItems() {

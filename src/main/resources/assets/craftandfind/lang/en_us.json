@@ -1,4 +1,12 @@
 {
+  "itemGroup.craftandfind": "Craft & Find",
+  "tooltip.craftandfind.storage_workbench.1": "A workbench that crafts using materials",
+  "tooltip.craftandfind.storage_workbench.2": "from nearby storage within range.",
+  "tooltip.craftandfind.storage_workbench.3": "Select recipes in the built-in recipe book or",
+  "tooltip.craftandfind.storage_workbench.4": "through JEI/EMI to automatically fill the crafting grid.",
+  "tooltip.craftandfind.storage_workbench.5": "Search the item list and click an item to",
+  "tooltip.craftandfind.storage_workbench.6": "highlight the containers holding it.",
+  "tooltip.craftandfind.storage_workbench.config": "Mod settings can be adjusted in the config.",
   "block.craftandfind.storage_workbench": "Storage Workbench",
   "item.craftandfind.storage_workbench": "Storage Workbench",
   "gui.craftandfind.open_storage": "Nearby storage",

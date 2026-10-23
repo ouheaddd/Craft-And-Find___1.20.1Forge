@@ -71,15 +71,25 @@ repositories {
         url = 'https://repo.spongepowered.org/repository/maven-public/'
     }
 
-    // JEI
     maven {
         url = 'https://maven.blamejared.com/'
     }
 
-    // EMI
     maven {
         name = 'Sleeping Town'
         url = 'https://repo.sleeping.town/'
+    }
+
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+    }
+
+    maven {
+        url = 'https://cursemaven.com/'
+        content {
+            includeGroup 'curse.maven'
+        }
     }
 }
 
@@ -88,29 +98,27 @@ dependencies {
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
-    // ------------------------------------------------------------
-    // JEI 1.20.1
-    // ------------------------------------------------------------
+    // JEI API
+    compileOnly fg.deobf('mezz.jei:jei-1.20.1-common-api:15.20.0.127')
+    compileOnly fg.deobf('mezz.jei:jei-1.20.1-forge-api:15.20.0.127')
 
-    // Keep JEI API available so Craft & Find's JEI integration compiles.
-    compileOnly fg.deobf("mezz.jei:jei-1.20.1-common-api:15.20.0.127")
-    compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge-api:15.20.0.127")
+    // Раскомментируй для запуска с JEI
+    // runtimeOnly fg.deobf('mezz.jei:jei-1.20.1-forge:15.20.0.127')
 
-    // Temporarily disabled while testing native EMI integration.
-    // Uncomment later when testing JEI + EMI together.
-    // runtimeOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.127")
+    // EMI
+    compileOnly fg.deobf('dev.emi:emi-forge:1.1.24+1.20.1:api')
+    runtimeOnly fg.deobf('dev.emi:emi-forge:1.1.24+1.20.1')
 
+    // ImmersiveUI 0.3.0
+    runtimeOnly fg.deobf('maven.modrinth:9wv7LuMc:YbO8SNFq')
 
-    // ------------------------------------------------------------
-    // EMI 1.20.1
-    // ------------------------------------------------------------
+    // OctoLib 0.5.0.1+1.20.1
+    runtimeOnly fg.deobf('maven.modrinth:RH2KUdKJ:HZ7KmyXp')
 
-    // API for Craft & Find EMI compatibility.
-    compileOnly fg.deobf("dev.emi:emi-forge:1.1.24+1.20.1:api")
+    // Subtle GUI Tweaks — точный файл из FUSHIGI 4.7.5
+    runtimeOnly fg.deobf('curse.maven:subtle-gui-tweaks-1585762:8998789')
 
-    // EMI itself, only in the development runtime.
-    // It does NOT become a required dependency of Craft & Find.
-    runtimeOnly fg.deobf("dev.emi:emi-forge:1.1.24+1.20.1")
+    runtimeOnly fg.deobf('maven.modrinth:lhGA9TYQ:1MKTLiiG')
 }
 
 sourceSets.main.resources {
