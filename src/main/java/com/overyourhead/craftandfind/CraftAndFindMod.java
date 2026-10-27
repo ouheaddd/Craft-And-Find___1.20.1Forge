@@ -43,10 +43,13 @@ public final class CraftAndFindMod {
             return;
         }
 
-        event.getEntries().putAfter(
-                Blocks.ENCHANTING_TABLE.asItem().getDefaultInstance(),
-                ModItems.STORAGE_WORKBENCH_ITEM.get().getDefaultInstance(),
-                CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-        );
+        var anchor = Blocks.ENCHANTING_TABLE.asItem().getDefaultInstance();
+        var workbench = ModItems.STORAGE_WORKBENCH_ITEM.get().getDefaultInstance();
+        // Other mods may remove or replace the enchanting table in this tab.
+        if (event.getEntries().contains(anchor)) {
+            event.getEntries().putAfter(anchor, workbench, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+        } else {
+            event.accept(workbench, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+        }
     }
 }
